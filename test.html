@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест: Какой вы тип в команде?</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            padding: 16px;
+            max-width: 100%;
+            margin: 0 auto;
+            background-color: #f3f4f5;
+            color: #333;
+            line-height: 1.5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 16px;
+        }
+        .question {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #000;
+        }
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .option {
+            padding: 14px 16px;
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 16px;
+        }
+        .option:hover {
+            background: #f5f5f5;
+            border-color: #d0d0d0;
+        }
+        .option.selected {
+            background: #e3f2fd;
+            border-color: #bbdefb;
+            font-weight: 500;
+        }
+        .progress-container {
+            margin: 20px 0;
+            width: 100%;
+            background: #e0e0e0;
+            border-radius: 8px;
+            height: 8px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #007aff;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #007aff;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: center;
+            width: 100%;
+            margin-top: 16px;
+        }
+        .btn:hover {
+            background: #0062cc;
+        }
+        .btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .result-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #000;
+            text-align: center;
+        }
+        .result-type {
+            font-size: 20px;
+            font-weight: 600;
+            color: #007aff;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .result-description {
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 10px;
+        }
+        .result-stats {
+            margin-top: 24px;
+        }
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .stat-label {
+            font-weight: 500;
+        }
+        .stat-value {
+            font-weight: 600;
+        }
+        .hidden {
+            display: none;
+        }
+        .emoji {
+            font-size: 24px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div id="quiz-view">
+        <div class="container">
+            <div class="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="question" id="question"></div>
+            <div class="options" id="options"></div>
+            <button class="btn" id="next-btn" disabled>Далее</button>
+        </div>
+    </div>
+
+    <div id="result-view" class="hidden">
+        <div class="container">
+            <div class="result-title">🎭 Ваш тип личности в команде</div>
+            <div class="result-type" id="result-type"></div>
+            <div class="result-description" id="result-description"></div>
+            
+            <div class="result-stats">
+                <div style="font-weight: 600; margin-bottom: 12px;">Статистика ответов:</div>
+                <div class="stat-item">
+                    <span class="stat-label">Генератор идей (A):</span>
+                    <span class="stat-value" id="stat-a">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Критик (B):</span>
+                    <span class="stat-value" id="stat-b">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Реализатор (C):</span>
+                    <span class="stat-value" id="stat-c">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Скептик (D):</span>
+                    <span class="stat-value" id="stat-d">0</span>
+                </div>
+            </div>
+            
+            <button class="btn" id="restart-btn">Пройти тест снова</button>
+        </div>
+    </div>
+
+    <script>
+        // Данные теста
+        const QUESTIONS = [
+            {
+                "question": "1. Ваш подход к новым идеям?",
+                "options": [
+                    "A. Вижу прорыв! Надо срочно обсудить!",
+                    "B. Интересно, но где подводные камни?",
+                    "C. Зафиксирую и разберу по шагам",
+                    "D. Очередная 'революция'? Покажите бизнес-модель"
+                ],
+                "keys": ["A", "B", "C", "D"]
+            },
+            {
+                "question": "2. Что делает вас бешеным в работе?",
+                "options": [
+                    "A. Когда говорят 'это невозможно'",
+                    "B. Люди, которые не видят рисков",
+                    "C. Хаотичные митинги без четких действий",
+                    "D. Воодушевленные речи без цифр"
+                ],
+                "keys": ["A", "B", "C", "D"]
+            },
+            {
+                "question": "3. Ваш стиль планирования?",
+                "options": [
+                    "A. План? Главное — драйв и vision!",
+                    "B. План A, план B, и contingency-plan",
+                    "C. Gantt-чарт + спринты",
+                    "D. План — это ROI и точка"
+                ],
+                "keys": ["A", "B", "C", "D"]
+            },
+            {
+                "question": "4. Как вы реагируете на провал?",
+                "options": [
+                    "A. Значит, пробуем иначе!",
+                    "B. Я же предупреждал...",
+                    "C. Разбираем ошибки и оптимизируем",
+                    "D. Вот почему я не верил в это"
+                ],
+                "keys": ["A", "B", "C", "D"]
+            },
+            {
+                "question": "5. Ваш суперсила в команде?",
+                "options": [
+                    "A. Заряжаю энергией!",
+                    "B. Спасаю от фатальных решений",
+                    "C. Превращаю хаос в процессы",
+                    "D. Экономию бюджет и нервы"
+                ],
+                "keys": ["A", "B", "C", "D"]
+            },
+            {
+                "question": "6. Что скажете на фразу 'Let's pivot'?",
+                "options": [
+                    "A. Ура, новый вызов!",
+                    "B. Опять? Давайте сначала аналитику",
+                    "C. Готовлю чек-лист для изменений",
+                    "D. Сколько это будет стоить?"
+                ],
+                "keys": ["A", "B", "C", "D"]
+            },
+            {
+                "question": "7. Ваш девиз?",
+                "options": [
+                    "A. Если не рисковать — не взлетит!",
+                    "B. Доверяй, но проверяй",
+                    "C. Done is better than perfect",
+                    "D. Show me the money"
+                ],
+                "keys": ["A", "B", "C", "D"]
+            }
+        ];
+
+        const PERSONALITY_TYPES = {
+            "A": "🚀 Генератор идей",
+            "B": "🛡️ Критик",
+            "C": "⚙️ Реализатор",
+            "D": "💰 Скептик"
+        };
+
+        const PERSONALITY_DESCRIPTIONS = {
+            "A": "Вы — визионер. Без 'критика' и 'реализатора' ваш проект — просто голограмма успеха. Вы видите возможности там, где другие видят препятствия, но иногда забываете о практической реализации.",
+            "B": "Вы — антикризисный менеджер. Без вас стартапы сгорают, но с вами — могут скучнеть. Ваша способность видеть риски спасает команду от фатальных ошибок, но иногда тормозит прогресс.",
+            "C": "Вы — человеческий API между мечтами и реальностью. Без вас все остается в Figma. Вы превращаете хаотичные идеи в работающие процессы, но иногда теряете гибкость.",
+            "D": "Вы — финансовый щит. Ваше кредо: 'Не верю, пока не увижу MRR'. Вы защищаете ресурсы компании, но иногда слишком поздно включаетесь в перспективные проекты."
+        };
+
+        const EMOJI_MAP = {
+            "A": "🚀",
+            "B": "🛡️",
+            "C": "⚙️",
+            "D": "💰"
+        };
+
+        // Состояние теста
+        let currentQuestion = 0;
+        let selectedOption = null;
+        let answers = { A: 0, B: 0, C: 0, D: 0 };
+
+        // Элементы интерфейса
+        const quizView = document.getElementById('quiz-view');
+        const resultView = document.getElementById('result-view');
+        const questionElement = document.getElementById('question');
+        const optionsContainer = document.getElementById('options');
+        const nextButton = document.getElementById('next-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const resultTypeElement = document.getElementById('result-type');
+        const resultDescriptionElement = document.getElementById('result-description');
+        const restartButton = document.getElementById('restart-btn');
+        const statElements = {
+            "A": document.getElementById('stat-a'),
+            "B": document.getElementById('stat-b'),
+            "C": document.getElementById('stat-c'),
+            "D": document.getElementById('stat-d')
+        };
+
+        // Инициализация Telegram Web App
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+        Telegram.WebApp.setHeaderColor('#007aff');
+        Telegram.WebApp.setBackgroundColor('#f3f4f5');
+
+        // Показать текущий вопрос
+        function showQuestion() {
+            const questionData = QUESTIONS[currentQuestion];
+            questionElement.textContent = questionData.question;
+            
+            // Обновить прогресс
+            const progress = ((currentQuestion + 1) / QUESTIONS.length) * 100;
+            progressBar.style.width = `${progress}%`;
+            
+            // Очистить варианты ответов
+            optionsContainer.innerHTML = '';
+            selectedOption = null;
+            nextButton.disabled = true;
+            
+            // Создать варианты ответов
+            questionData.options.forEach((optionText, index) => {
+                const optionKey = questionData.keys[index];
+                const optionElement = document.createElement('div');
+                optionElement.className = 'option';
+                optionElement.innerHTML = `<span class="emoji">${EMOJI_MAP[optionKey]}</span> ${optionText}`;
+                
+                optionElement.addEventListener('click', () => {
+                    // Снять выделение со всех вариантов
+                    document.querySelectorAll('.option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    
+                    // Выделить выбранный вариант
+                    optionElement.classList.add('selected');
+                    selectedOption = optionKey;
+                    nextButton.disabled = false;
+                });
+                
+                optionsContainer.appendChild(optionElement);
+            });
+        }
+
+        // Показать результаты
+        function showResults() {
+            // Определить доминирующий тип
+            let maxCount = 0;
+            let dominantType = 'A';
+            
+            for (const [type, count] of Object.entries(answers)) {
+                if (count > maxCount) {
+                    maxCount = count;
+                    dominantType = type;
+                }
+            }
+            
+            // Показать результаты
+            resultTypeElement.textContent = PERSONALITY_TYPES[dominantType];
+            resultDescriptionElement.textContent = PERSONALITY_DESCRIPTIONS[dominantType];
+            
+            // Обновить статистику
+            for (const [type, element] of Object.entries(statElements)) {
+                element.textContent = `${answers[type]}/${QUESTIONS.length}`;
+            }
+            
+            // Переключить вид
+            quizView.classList.add('hidden');
+            resultView.classList.remove('hidden');
+            
+            // Прокрутить вверх
+            window.scrollTo(0, 0);
+        }
+
+        // Обработчик кнопки "Далее"
+        nextButton.addEventListener('click', () => {
+            if (selectedOption) {
+                answers[selectedOption]++;
+                currentQuestion++;
+                
+                if (currentQuestion < QUESTIONS.length) {
+                    showQuestion();
+                } else {
+                    showResults();
+                }
+            }
+        });
+
+        // Обработчик кнопки "Пройти снова"
+        restartButton.addEventListener('click', () => {
+            currentQuestion = 0;
+            answers = { A: 0, B: 0, C: 0, D: 0 };
+            quizView.classList.remove('hidden');
+            resultView.classList.add('hidden');
+            showQuestion();
+        });
+
+        // Запустить тест
+        showQuestion();
+    </script>
+</body>
+</html>
